@@ -5,17 +5,14 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   server: {
-    // Security: Disable directory listing
     fs: {
       strict: true,
     },
   },
   build: {
-    // Security: Minify code in production
+    outDir: 'dist',
     minify: 'esbuild',
-    // Generate source maps only in development
     sourcemap: mode !== 'production',
-    // Remove console and debugger in production
     esbuild: {
       drop: mode === 'production' ? ['console', 'debugger'] : [],
     },

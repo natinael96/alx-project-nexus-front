@@ -36,7 +36,7 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30s timeout
+  timeout: 120000, // 120s — generous for cold-starting backends (Render, Railway, etc.)
   // Note: withCredentials is NOT set because we use Bearer tokens, not cookies.
   // Setting it to true would cause CORS errors if the server uses Access-Control-Allow-Origin: *
 });
@@ -167,6 +167,14 @@ export const authAPI = {
       new_password: newPassword,
       confirm_password: confirmPassword,
     }),
+  requestPasswordReset: (email: string) =>
+    api.post('/auth/password-reset/', { email }),
+  confirmPasswordReset: (token: string, newPassword: string, newPassword2: string) =>
+    api.post('/auth/password-reset/confirm/', {
+      token,
+      new_password: newPassword,
+      new_password2: newPassword2,
+    }),
 };
 
 // ---------- Jobs API ----------
@@ -183,6 +191,8 @@ export const jobsAPI = {
     api.get<PaginatedResponse<Job>>('/jobs/search/', { params }),
   saveSearch: (data: { query: string; filters: Record<string, string>; name?: string }) =>
     api.post('/jobs/search/save/', data),
+  getRecommendations: (limit: number = 4) =>
+    api.get<PaginatedResponse<Job>>('/jobs/recommendations/', { params: { limit } }),
   // Admin: Approve/Reject job
   updateJobApproval: (jobId: string, approvalStatus: 'pending' | 'approved' | 'rejected') =>
     api.patch<Job>(`/jobs/${jobId}/`, { approval_status: approvalStatus }),
@@ -210,6 +220,21 @@ export const applicationsAPI = {
 export const profileAPI = {
   // Full profile
   getProfile: () => api.get<UserProfile>('/auth/profile/'),
+  
+  // Dashboard data (all stats in one call)
+  getDashboard: () => api.get<{
+    statistics: {
+      total_applications: number;
+      pending_applications: number;
+      accepted_applications: number;
+      rejected_applications: number;
+      saved_jobs_count: number;
+      applications_last_30_days: number;
+    };
+    recent_applications: Application[];
+    recent_saved_jobs: SavedJob[];
+    profile_completion: number;
+  }>('/auth/profile/dashboard/'),
 
   // Skills
   addSkill: (data: Omit<Skill, 'id'>) => api.post<Skill>('/auth/profile/skills/', data),
@@ -246,7 +271,8 @@ export const profileAPI = {
   deletePortfolio: (portfolioId: string) => api.delete(`/auth/profile/portfolio/${portfolioId}/`),
 
   // Saved Jobs
-  getSavedJobs: () => api.get<SavedJob[]>('/auth/profile/saved-jobs/'),
+  getSavedJobs: (params?: { page?: number; page_size?: number }) =>
+    api.get<PaginatedResponse<SavedJob>>('/auth/profile/saved-jobs/', { params }),
   saveJob: (jobId: string, notes?: string) =>
     api.post<SavedJob>('/auth/profile/saved-jobs/', { job: jobId, notes }),
   unsaveJob: (savedJobId: string) => api.delete(`/auth/profile/saved-jobs/${savedJobId}/`),

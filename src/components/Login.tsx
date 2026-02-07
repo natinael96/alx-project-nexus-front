@@ -25,8 +25,16 @@ function Login() {
 
     const result = await login(sanitizedUsername, password);
     
-    if (result.success) {
-      navigate('/');
+    if (result.success && result.user) {
+      // Redirect based on role
+      const role = result.user.role;
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'employer') {
+        navigate('/employer/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       const errorMsg = typeof result.error === 'string' 
         ? result.error 
@@ -88,6 +96,15 @@ function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+              >
+                Forgot password?
+              </Link>
             </div>
 
             <button

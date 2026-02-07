@@ -153,6 +153,15 @@ export const validateFile = (
 
 // Sanitize error messages (don't expose sensitive information)
 export const sanitizeError = (error: any): string => {
+  // Timeout / network errors (no response from server)
+  if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+    return 'The server took too long to respond. It may be starting up — please try again in a moment.';
+  }
+
+  if (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error') {
+    return 'Unable to reach the server. Please check your connection and try again.';
+  }
+
   // Don't expose internal error details
   if (error?.response?.status === 500) {
     return 'An internal server error occurred. Please try again later.';

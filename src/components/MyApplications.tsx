@@ -1,36 +1,62 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import useApplicationsStore from '../stores/applicationsStore';
 import type { ApplicationFilters } from '../types';
 import Toast from './Toast';
+import WithdrawModal from './WithdrawModal';
 
 function MyApplications() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { applications, loading, error, pagination, fetchApplications, withdrawApplication } =
     useApplicationsStore();
-  const [statusFilter, setStatusFilter] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [withdrawModal, setWithdrawModal] = useState<{ app: any; isOpen: boolean }>({
+    app: null,
+    isOpen: false,
+  });
+
+  const statusFilter = searchParams.get('status') || '';
 
   useEffect(() => {
     const params: ApplicationFilters = { ordering: '-applied_at' };
     if (statusFilter) params.status = statusFilter;
+    const page = parseInt(searchParams.get('page') || '1');
+    if (page > 1) params.page = page;
     fetchApplications(params);
-  }, [statusFilter, fetchApplications]);
+  }, [statusFilter, searchParams, fetchApplications]);
 
-  const handleWithdraw = async (applicationId: string) => {
-    if (!window.confirm('Are you sure you want to withdraw this application?')) return;
-    const result = await withdrawApplication(applicationId);
+  const handleWithdraw = async (application: any, reason: string) => {
+    const result = await withdrawApplication(application.id, reason);
     if (result.success) {
       setToast({ message: 'Application withdrawn successfully', type: 'success' });
-      fetchApplications({ ordering: '-applied_at', status: statusFilter || undefined });
+      setWithdrawModal({ app: null, isOpen: false });
+      // Refresh applications
+      const params: ApplicationFilters = { ordering: '-applied_at' };
+      if (statusFilter) params.status = statusFilter;
+      fetchApplications(params);
     } else {
-      setToast({ message: typeof result.error === 'string' ? result.error : 'Failed to withdraw', type: 'error' });
+      setToast({
+        message: typeof result.error === 'string' ? result.error : 'Failed to withdraw application',
+        type: 'error',
+      });
     }
   };
 
+  const handleFilterChange = (status: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (status) {
+      newParams.set('status', status);
+    } else {
+      newParams.delete('status');
+    }
+    newParams.delete('page'); // Reset to page 1
+    setSearchParams(newParams);
+  };
+
   const handlePageChange = (page: number) => {
-    const params: ApplicationFilters = { page, ordering: '-applied_at' };
-    if (statusFilter) params.status = statusFilter;
-    fetchApplications(params);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', page.toString());
+    setSearchParams(newParams);
   };
 
   const statusColors: Record<string, string> = {
@@ -47,6 +73,8 @@ function MyApplications() {
       day: 'numeric',
     });
 
+  const canWithdraw = (status: string) => status === 'pending' || status === 'reviewed';
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -56,19 +84,25 @@ function MyApplications() {
         <p className="text-neutral-500">Track and manage your job applications</p>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex gap-2 flex-wrap">
-        {['', 'pending', 'reviewed', 'accepted', 'rejected'].map((status) => (
+      {/* Filter Tabs */}
+      <div className="mb-6 flex gap-2 flex-wrap border-b border-neutral-200">
+        {[
+          { value: '', label: 'All' },
+          { value: 'pending', label: 'Pending' },
+          { value: 'reviewed', label: 'Reviewed' },
+          { value: 'accepted', label: 'Accepted' },
+          { value: 'rejected', label: 'Rejected' },
+        ].map((filter) => (
           <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`px-4 py-2 text-sm rounded-lg border transition-all ${
-              statusFilter === status
-                ? 'bg-neutral-900 text-white border-neutral-900'
-                : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+            key={filter.value}
+            onClick={() => handleFilterChange(filter.value)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              statusFilter === filter.value
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
             }`}
           >
-            {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'All'}
+            {filter.label}
           </button>
         ))}
       </div>
@@ -87,84 +121,114 @@ function MyApplications() {
           <svg className="w-12 h-12 text-neutral-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p className="text-neutral-500 mb-4">No applications yet</p>
+          <p className="text-neutral-500 mb-4">No applications found</p>
           <Link to="/" className="text-sm font-medium text-neutral-900 hover:underline">
             Browse jobs →
           </Link>
         </div>
       ) : (
         <>
-          <div className="space-y-4">
-            {applications.map((app) => (
-              <div
-                key={app.id}
-                className="bg-white rounded-xl border border-neutral-200 p-6 hover:border-neutral-300 transition-all"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      to={`/jobs/${app.job.id}`}
-                      className="text-lg font-medium text-neutral-900 hover:underline"
-                    >
-                      {app.job.title}
-                    </Link>
-                    <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-neutral-500">
-                      <span>Applied {formatDate(app.applied_at)}</span>
-                      {app.reviewed_at && <span>• Reviewed {formatDate(app.reviewed_at)}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full border ${
-                        statusColors[app.status] || 'bg-neutral-50 text-neutral-700 border-neutral-200'
-                      }`}
-                    >
-                      {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                    </span>
-                    {app.status === 'pending' && (
-                      <button
-                        onClick={() => handleWithdraw(app.id)}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Withdraw
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {app.cover_letter && (
-                  <p className="mt-3 text-sm text-neutral-600 line-clamp-2">
-                    {app.cover_letter}
-                  </p>
-                )}
-              </div>
-            ))}
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-neutral-50 border-b border-neutral-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Job Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Applied Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {applications.map((app) => (
+                    <tr key={app.id} className="hover:bg-neutral-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <Link
+                          to={`/jobs/${app.job.id}`}
+                          className="text-sm font-medium text-neutral-900 hover:text-neutral-700"
+                        >
+                          {app.job.title}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">
+                        N/A
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-500">
+                        {formatDate(app.applied_at)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-md border ${
+                            statusColors[app.status] || 'bg-neutral-50 text-neutral-700 border-neutral-200'
+                          }`}
+                        >
+                          {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/jobs/${app.job.id}`}
+                            className="text-xs font-medium text-neutral-700 hover:text-neutral-900 transition-colors"
+                          >
+                            View
+                          </Link>
+                          {canWithdraw(app.status) && (
+                            <button
+                              onClick={() => setWithdrawModal({ app, isOpen: true })}
+                              className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors"
+                            >
+                              Withdraw
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Pagination */}
-          {pagination && pagination.count > 20 && (
-            <div className="mt-8 flex justify-center gap-2">
-              {pagination.previous && (
+          {pagination.count > 0 && (
+            <div className="flex items-center justify-between border-t border-neutral-200 pt-6 mt-6">
+              <div className="text-sm text-neutral-500">
+                Showing {((parseInt(searchParams.get('page') || '1')) - 1) * 20 + 1} to{' '}
+                {Math.min(parseInt(searchParams.get('page') || '1') * 20, pagination.count)} of{' '}
+                {pagination.count} applications
+              </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={() => handlePageChange(Math.max(1, (pagination as any).currentPage - 1))}
-                  className="px-4 py-2 text-sm border border-neutral-200 rounded-lg hover:bg-neutral-50"
+                  onClick={() => handlePageChange(Math.max(1, parseInt(searchParams.get('page') || '1') - 1))}
+                  disabled={!pagination.previous}
+                  className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
                 >
                   Previous
                 </button>
-              )}
-              <span className="px-4 py-2 text-sm text-neutral-500">
-                {applications.length} of {pagination.count} applications
-              </span>
-              {pagination.next && (
                 <button
-                  onClick={() => handlePageChange(((pagination as any).currentPage || 1) + 1)}
-                  className="px-4 py-2 text-sm border border-neutral-200 rounded-lg hover:bg-neutral-50"
+                  onClick={() => handlePageChange(parseInt(searchParams.get('page') || '1') + 1)}
+                  disabled={!pagination.next}
+                  className="px-4 py-2 text-sm font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-50 transition-colors"
                 >
                   Next
                 </button>
-              )}
+              </div>
             </div>
           )}
         </>
+      )}
+
+      {/* Withdraw Modal */}
+      {withdrawModal.app && (
+        <WithdrawModal
+          isOpen={withdrawModal.isOpen}
+          onClose={() => setWithdrawModal({ app: null, isOpen: false })}
+          onConfirm={(reason) => handleWithdraw(withdrawModal.app, reason)}
+          jobTitle={withdrawModal.app.job.title}
+          loading={loading}
+        />
       )}
     </div>
   );

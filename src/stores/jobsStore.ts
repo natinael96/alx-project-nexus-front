@@ -1,7 +1,25 @@
 import { create } from 'zustand';
-import { jobsAPI, categoriesAPI } from '../lib/api';
+import { jobsAPI } from '../lib/api';
 import type { Job, Category, JobFilters, PaginatedResponse, ApiError } from '../types';
 import { sanitizeError } from '../utils/security';
+
+/**
+ * Extract unique categories from a list of jobs.
+ * Merges with existing categories so the dropdown accumulates as users browse pages.
+ */
+const extractCategories = (jobs: Job[], existing: Category[]): Category[] => {
+  const map = new Map<string, Category>();
+  // Keep existing categories
+  existing.forEach((cat) => map.set(cat.id, cat));
+  // Add new ones from job results
+  jobs.forEach((job) => {
+    if (job.category && !map.has(job.category.id)) {
+      map.set(job.category.id, job.category);
+    }
+  });
+  // Sort alphabetically by name
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+};
 
 interface JobsState {
   jobs: Job[];
@@ -61,8 +79,10 @@ const useJobsStore = create<JobsState>((set, get) => ({
       ) as JobFilters;
       
       const response = await jobsAPI.getJobs(params);
+      const categories = extractCategories(response.data.results, get().categories);
       set({
         jobs: response.data.results,
+        categories,
         pagination: {
           count: response.data.count,
           next: response.data.next,
@@ -145,8 +165,10 @@ const useJobsStore = create<JobsState>((set, get) => ({
     try {
       const params = { q: query, ...filters } as JobFilters;
       const response = await jobsAPI.searchJobs(params);
+      const categories = extractCategories(response.data.results, get().categories);
       set({
         jobs: response.data.results,
+        categories,
         pagination: {
           count: response.data.count,
           next: response.data.next,
@@ -163,17 +185,11 @@ const useJobsStore = create<JobsState>((set, get) => ({
     }
   },
 
-  // Get categories
+  // Categories are auto-extracted from job results — no separate API call needed.
+  // This method exists so components can call it without breaking; it returns what's already in state.
   fetchCategories: async () => {
-    try {
-      const response = await categoriesAPI.getCategories();
-      set({ categories: response.data });
-      return { success: true, categories: response.data };
-    } catch (error: any) {
-      const errorMessage = sanitizeError(error);
-      set({ error: errorMessage });
-      return { success: false, error: errorMessage };
-    }
+    const { categories } = get();
+    return { success: true, categories };
   },
 
   // Update filters

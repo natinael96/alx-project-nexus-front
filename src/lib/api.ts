@@ -3,7 +3,6 @@ import type {
   User,
   Job,
   Application,
-  Category,
   PaginatedResponse,
   NotificationResponse,
   LoginResponse,
@@ -204,12 +203,6 @@ export const applicationsAPI = {
     api.patch<Application>(`/jobs/applications/${applicationId}/`, { status }),
   withdrawApplication: (applicationId: string, reason?: string) =>
     api.post(`/jobs/applications/${applicationId}/withdraw/`, { reason }),
-};
-
-// ---------- Categories API ----------
-
-export const categoriesAPI = {
-  getCategories: () => api.get<Category[]>('/jobs/categories/'),
 };
 
 // ---------- Profile API ----------

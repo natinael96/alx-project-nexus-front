@@ -22,6 +22,65 @@ interface PlatformStats {
   };
 }
 
+// API Response types matching the actual API structure
+interface UserStatsResponse {
+  total_users: number;
+  active_users: number;
+  inactive_users: number;
+  users_by_role: {
+    job_seeker: number;
+    employer: number;
+    admin: number;
+  };
+  recent_registrations_30d: number;
+}
+
+interface JobStatsResponse {
+  total_jobs: number;
+  active_jobs: number;
+  jobs_by_status: {
+    active: number;
+    closed: number;
+    draft: number;
+  };
+  jobs_by_type: {
+    full_time: number;
+    part_time: number;
+    contract: number;
+    remote: number;
+  };
+  recent_jobs_30d: number;
+  featured_jobs: number;
+  total_views: number;
+  average_views_per_job: number;
+}
+
+interface ApplicationStatsResponse {
+  total_applications: number;
+  applications_by_status: {
+    pending: number;
+    reviewed: number;
+    shortlisted: number;
+    rejected: number;
+    hired: number;
+  };
+  recent_applications_30d: number;
+  average_applications_per_job: number;
+  top_jobs_by_applications: Array<{
+    id: string;
+    title: string;
+    app_count: number;
+  }>;
+}
+
+interface StatisticsResponse {
+  users: UserStatsResponse;
+  jobs: JobStatsResponse;
+  applications: ApplicationStatsResponse;
+  categories: any;
+  timestamp: string;
+}
+
 function AdminDashboard() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,32 +93,43 @@ function AdminDashboard() {
 
   const loadStatistics = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const [, userStatsRes, jobStatsRes, appStatsRes] = await Promise.all([
-        adminAPI.getStatistics(),
-        adminAPI.getUserStatistics(),
-        adminAPI.getJobStatistics(),
-        adminAPI.getApplicationStatistics(),
+      // Use getStatistics() which returns all stats in one call
+      const statsRes = await adminAPI.getStatistics();
+      const data = statsRes.data as StatisticsResponse;
+
+      // Also fetch individual endpoints as fallback
+      const [userStatsRes, jobStatsRes, appStatsRes] = await Promise.all([
+        adminAPI.getUserStatistics().catch(() => ({ data: null })),
+        adminAPI.getJobStatistics().catch(() => ({ data: null })),
+        adminAPI.getApplicationStatistics().catch(() => ({ data: null })),
       ]);
+
+      // Use data from getStatistics() if available, otherwise use individual endpoints
+      const usersData = data?.users || userStatsRes.data as UserStatsResponse;
+      const jobsData = data?.jobs || jobStatsRes.data as JobStatsResponse;
+      const applicationsData = data?.applications || appStatsRes.data as ApplicationStatsResponse;
 
       setStats({
         users: {
-          total: userStatsRes.data.total || 0,
-          employers: userStatsRes.data.employers || 0,
-          job_seekers: userStatsRes.data.job_seekers || 0,
-          active_today: userStatsRes.data.active_today || 0,
+          total: usersData?.total_users || 0,
+          employers: usersData?.users_by_role?.employer || 0,
+          job_seekers: usersData?.users_by_role?.job_seeker || 0,
+          active_today: usersData?.active_users || 0, // Using active_users as active_today
         },
         jobs: {
-          total: jobStatsRes.data.total || 0,
-          active: jobStatsRes.data.active || 0,
-          pending_approval: jobStatsRes.data.pending_approval || 0,
+          total: jobsData?.total_jobs || 0,
+          active: jobsData?.active_jobs || 0,
+          pending_approval: jobsData?.jobs_by_status?.draft || 0, // Using draft as pending_approval
         },
         applications: {
-          total: appStatsRes.data.total || 0,
-          pending_review: appStatsRes.data.pending_review || 0,
+          total: applicationsData?.total_applications || 0,
+          pending_review: applicationsData?.applications_by_status?.pending || 0,
         },
       });
     } catch (err: any) {
+      console.error('Failed to load statistics:', err);
       setError(sanitizeError(err));
       setToast({ message: sanitizeError(err), type: 'error' });
     } finally {

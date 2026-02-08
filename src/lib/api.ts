@@ -449,6 +449,24 @@ export const filesAPI = {
     }),
 };
 
+// ---------- Health API (Public) ----------
+
+export const healthAPI = {
+  // Public health check endpoints (no auth required)
+  getHealth: () => {
+    const url = `${API_BASE_URL}/health/`;
+    return axios.get<any>(url);
+  },
+  getLiveness: () => {
+    const url = `${API_BASE_URL}/health/liveness/`;
+    return axios.get<any>(url);
+  },
+  getReadiness: () => {
+    const url = `${API_BASE_URL}/health/readiness/`;
+    return axios.get<any>(url);
+  },
+};
+
 // ---------- Admin API ----------
 
 export const adminAPI = {

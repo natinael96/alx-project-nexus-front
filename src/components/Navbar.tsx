@@ -41,9 +41,8 @@ function Navbar() {
           <div className="flex items-center space-x-4">
             {authenticated ? (
               <>
-                {user && (
-                  <div className="flex items-center space-x-4">
-                    {user.role === 'admin' ? (
+                <div className="flex items-center space-x-4">
+                  {user?.role === 'admin' ? (
                       <>
                         <Link
                           to="/admin-panel/dashboard"
@@ -79,7 +78,7 @@ function Navbar() {
                         <div className="relative group">
                           <button className="flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-medium text-neutral-500">
-                              {user.username.charAt(0).toUpperCase()}
+                              {user?.username?.charAt(0).toUpperCase() || 'U'}
                             </div>
                           </button>
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
@@ -93,7 +92,7 @@ function Navbar() {
                           </div>
                         </div>
                       </>
-                    ) : user.role === 'employer' ? (
+                  ) : user?.role === 'employer' ? (
                       <>
                         <Link
                           to="/employer/dashboard"
@@ -129,7 +128,7 @@ function Navbar() {
                         <div className="relative group">
                           <button className="flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-medium text-neutral-500">
-                              {user.username.charAt(0).toUpperCase()}
+                              {user?.username?.charAt(0).toUpperCase() || 'U'}
                             </div>
                           </button>
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
@@ -172,7 +171,7 @@ function Navbar() {
                         <div className="relative group">
                           <button className="flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-medium text-neutral-500">
-                              {user.username.charAt(0).toUpperCase()}
+                              {user?.username?.charAt(0).toUpperCase() || 'U'}
                             </div>
                           </button>
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
@@ -184,10 +183,9 @@ function Navbar() {
                             </div>
                           </div>
                         </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                  </>
+                  )}
+                </div>
               </>
             ) : (
               <>

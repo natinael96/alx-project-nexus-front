@@ -518,7 +518,7 @@ export const adminAPI = {
 
   // Audit Logs
   getAuditLogs: (params?: {
-    user?: string;
+    user_id?: string; // API expects user_id, not user
     action?: string;
     content_type?: string;
     date_from?: string;

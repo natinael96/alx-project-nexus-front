@@ -5,15 +5,24 @@ import Toast from './Toast';
 
 interface AuditLog {
   id: string;
-  timestamp: string;
-  user: {
-    id: string;
-    username: string;
-  } | null;
+  user: string | null; // UUID string, not object
+  user_name: string | null;
   action: string;
-  content_type: string;
-  object_id: string;
-  details: any;
+  action_display: string;
+  content_type: string | null;
+  content_type_name: string | null;
+  object_id: string | null;
+  object_repr: string | null;
+  changes: Record<string, any>;
+  ip_address: string | null;
+  user_agent: string | null;
+  request_path: string | null;
+  request_method: string | null;
+  metadata: {
+    status_code?: number;
+    content_type?: string;
+  } | null;
+  created_at: string;
 }
 
 function AuditLogs() {
@@ -39,7 +48,7 @@ function AuditLogs() {
     setLoading(true);
     try {
       const params: any = {};
-      if (filters.user) params.user = filters.user;
+      if (filters.user) params.user_id = filters.user; // API expects user_id, not user
       if (filters.action) params.action = filters.action;
       if (filters.content_type) params.content_type = filters.content_type;
       if (filters.date_from) params.date_from = filters.date_from;
@@ -98,6 +107,12 @@ function AuditLogs() {
               <option value="update">Update</option>
               <option value="delete">Delete</option>
               <option value="view">View</option>
+              <option value="login">Login</option>
+              <option value="logout">Logout</option>
+              <option value="password_change">Password Change</option>
+              <option value="permission_change">Permission Change</option>
+              <option value="status_change">Status Change</option>
+              <option value="other">Other</option>
             </select>
           </div>
           <div>
@@ -152,30 +167,48 @@ function AuditLogs() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Timestamp</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">User</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Action</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Object Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Object ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Object</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Request</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">IP Address</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-neutral-50">
-                    <td className="px-6 py-4 text-sm text-neutral-600">{new Date(log.timestamp).toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm text-neutral-600">{log.user?.username || 'System'}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-600 whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-600">
+                      {log.user_name || (log.user ? `User ${log.user.substring(0, 8)}...` : 'System')}
+                    </td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 text-xs font-medium rounded bg-blue-50 text-blue-700">
-                        {log.action}
+                        {log.action_display || log.action}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-neutral-600">{log.content_type}</td>
-                    <td className="px-6 py-4 text-sm text-neutral-600 font-mono text-xs">{log.object_id}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-600">
+                      {log.object_repr || log.content_type_name || log.content_type || '—'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-600">
+                      <span className="font-mono text-xs">
+                        {log.request_method} {log.request_path || '—'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-600 font-mono text-xs">
+                      {log.ip_address || '—'}
+                    </td>
                     <td className="px-6 py-4">
-                      <button
-                        onClick={() => loadChangeHistory(log.content_type, log.object_id)}
-                        className="text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        View History
-                      </button>
+                      {log.object_id && log.content_type ? (
+                        <button
+                          onClick={() => loadChangeHistory(log.content_type!, log.object_id!)}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          View History
+                        </button>
+                      ) : (
+                        <span className="text-xs text-neutral-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

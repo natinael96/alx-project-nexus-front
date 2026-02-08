@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { Job } from '../types';
 import SaveJobButton from './SaveJobButton';
 import useAuthStore from '../stores/authStore';
+import { useSavedJobs } from '../hooks/useSavedJobs';
 
 interface JobCardProps {
   job: Job;
@@ -9,6 +10,12 @@ interface JobCardProps {
 
 function JobCard({ job }: JobCardProps) {
   const { isAuthenticated } = useAuthStore();
+  const { getSavedJobId, updateSavedJob } = useSavedJobs();
+  const savedJobId = getSavedJobId(job.id);
+
+  const handleSaveChange = (newSavedJobId?: string | null) => {
+    updateSavedJob(job.id, newSavedJobId || null);
+  };
 
   const formatSalary = (min?: string, max?: string) => {
     if (!min && !max) return null;
@@ -85,7 +92,11 @@ function JobCard({ job }: JobCardProps) {
             </span>
             {isAuthenticated() && (
               <div onClick={(e) => e.preventDefault()} className="relative z-10">
-                <SaveJobButton jobId={job.id} />
+                <SaveJobButton 
+                  jobId={job.id} 
+                  savedJobId={savedJobId}
+                  onSaveChange={handleSaveChange}
+                />
               </div>
             )}
           </div>

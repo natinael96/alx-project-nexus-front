@@ -270,7 +270,7 @@ function LandingPage() {
                 </>
               ) : (
                 <Link
-                  to="/"
+                  to="/jobs"
                   className="px-8 py-3.5 text-base font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
                 >
                   Browse Jobs
@@ -421,7 +421,7 @@ function LandingPage() {
               </Link>
             ) : (
               <Link
-                to="/"
+                to="/jobs"
                 className="inline-block px-10 py-4 text-base font-medium text-neutral-900 bg-white rounded-lg hover:bg-neutral-100 transition-all duration-300 hover:scale-105 shadow-xl"
               >
                 Explore Jobs

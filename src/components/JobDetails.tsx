@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import useJobsStore from '../stores/jobsStore';
 import useApplicationsStore from '../stores/applicationsStore';
 import useAuthStore from '../stores/authStore';
+import { profileAPI } from '../lib/api';
 import Toast from './Toast';
 import SaveJobButton from './SaveJobButton';
 import { validateApplication } from '../utils/validation';
@@ -19,6 +20,7 @@ function JobDetails() {
   const [resume, setResume] = useState<File | null>(null);
   const [applicationError, setApplicationError] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [savedJobId, setSavedJobId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -26,6 +28,56 @@ function JobDetails() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Check if job is saved when job loads and user is authenticated
+  useEffect(() => {
+    const checkIfSaved = async () => {
+      if (!id || !isAuthenticated() || !job) {
+        setSavedJobId(null);
+        return;
+      }
+      
+      try {
+        const response = await profileAPI.getSavedJobs({ page_size: 100 });
+        const savedJob = response.data.results?.find(
+          (sj) => sj.job_detail?.id === id
+        );
+        if (savedJob?.id) {
+          setSavedJobId(savedJob.id);
+        } else {
+          setSavedJobId(null);
+        }
+      } catch (err) {
+        // Silently fail - user might not have any saved jobs yet
+        setSavedJobId(null);
+      }
+    };
+
+    checkIfSaved();
+  }, [id, job, isAuthenticated]);
+
+  const handleSaveChange = (newSavedJobId?: string | null) => {
+    // Update saved status directly from the callback
+    if (newSavedJobId !== undefined) {
+      setSavedJobId(newSavedJobId);
+    } else {
+      // Fallback: refresh saved status after save/unsave
+      if (!id || !isAuthenticated()) return;
+      
+      const refreshSavedStatus = async () => {
+        try {
+          const response = await profileAPI.getSavedJobs({ page_size: 100 });
+          const savedJob = response.data.results?.find(
+            (sj) => sj.job_detail?.id === id
+          );
+          setSavedJobId(savedJob?.id || null);
+        } catch (err) {
+          console.error('Failed to refresh saved status:', err);
+        }
+      };
+      refreshSavedStatus();
+    }
+  };
 
   const handleApplicationSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -216,7 +268,11 @@ function JobDetails() {
                 Apply Now
               </button>
               {isAuthenticated() && (
-                <SaveJobButton jobId={job.id} />
+                <SaveJobButton 
+                  jobId={job.id} 
+                  savedJobId={savedJobId}
+                  onSaveChange={handleSaveChange}
+                />
               )}
             </div>
           ) : (

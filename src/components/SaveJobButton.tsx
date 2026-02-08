@@ -6,7 +6,7 @@ import Toast from './Toast';
 interface SaveJobButtonProps {
   jobId: string;
   savedJobId?: string | null;
-  onSaveChange?: () => void;
+  onSaveChange?: (newSavedJobId?: string | null) => void;
 }
 
 function SaveJobButton({ jobId, savedJobId, onSaveChange }: SaveJobButtonProps) {
@@ -26,14 +26,17 @@ function SaveJobButton({ jobId, savedJobId, onSaveChange }: SaveJobButtonProps) 
       if (isSaved && savedJobId) {
         await profileAPI.unsaveJob(savedJobId);
         setToast({ message: 'Job removed from saved jobs', type: 'success' });
+        onSaveChange?.(null);
       } else {
-        await profileAPI.saveJob(jobId);
+        const response = await profileAPI.saveJob(jobId);
+        // The API returns the saved job with its ID
+        const newSavedJobId = response.data?.id || null;
         setToast({ message: 'Job saved successfully', type: 'success' });
+        onSaveChange?.(newSavedJobId);
       }
-      onSaveChange?.();
     } catch (error: any) {
       setToast({ 
-        message: error.response?.data?.detail || 'Failed to save job', 
+        message: error.response?.data?.error || error.response?.data?.detail || 'Failed to save job', 
         type: 'error' 
       });
     } finally {

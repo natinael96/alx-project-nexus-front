@@ -300,8 +300,8 @@ export const profileAPI = {
   getSavedJobs: (params?: { page?: number; page_size?: number }) =>
     api.get<PaginatedResponse<SavedJob>>('/auth/profile/saved-jobs/', { params }),
   saveJob: (jobId: string, notes?: string) =>
-    api.post<SavedJob>('/auth/profile/saved-jobs/', { job: jobId, notes }),
-  unsaveJob: (savedJobId: string) => api.delete(`/auth/profile/saved-jobs/${savedJobId}/`),
+    api.post<SavedJob>('/auth/profile/saved-jobs/save_job/', { job_id: jobId, notes }),
+  unsaveJob: (savedJobId: string) => api.delete(`/auth/profile/saved-jobs/${savedJobId}/unsave/`),
 
   // Preferences
   getPreferences: () => api.get<UserPreferences>('/auth/profile/preferences/'),

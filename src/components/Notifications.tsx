@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useNotificationsStore from '../stores/notificationsStore';
 import type { NotificationFilters } from '../types';
 import Toast from './Toast';
 
 function Notifications() {
+  const navigate = useNavigate();
   const {
     notifications,
     loading,
@@ -13,22 +15,27 @@ function Notifications() {
     markAsRead,
     markAllAsRead,
   } = useNotificationsStore();
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'type'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     const params: NotificationFilters = {};
-    if (filter === 'unread') params.is_read = false;
-    if (filter === 'read') params.is_read = true;
+    if (filter === 'unread') {
+      params.is_read = false;
+    }
+    if (typeFilter) {
+      params.notification_type = typeFilter;
+    }
     fetchNotifications(params);
-  }, [filter, fetchNotifications]);
+  }, [filter, typeFilter, fetchNotifications]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     const result = await markAsRead(notificationId);
     if (result.success) {
       const params: NotificationFilters = {};
       if (filter === 'unread') params.is_read = false;
-      if (filter === 'read') params.is_read = true;
+      if (typeFilter) params.notification_type = typeFilter;
       fetchNotifications(params);
     }
   };
@@ -37,9 +44,21 @@ function Notifications() {
     const result = await markAllAsRead();
     if (result.success) {
       setToast({ message: 'All notifications marked as read', type: 'success' });
-      fetchNotifications(filter === 'unread' ? { is_read: false } : {});
+      const params: NotificationFilters = {};
+      if (filter === 'unread') params.is_read = false;
+      if (typeFilter) params.notification_type = typeFilter;
+      fetchNotifications(params);
     } else {
       setToast({ message: 'Failed to mark all as read', type: 'error' });
+    }
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.is_read) {
+      handleMarkAsRead(notification.id);
+    }
+    if (notification.action_url) {
+      navigate(notification.action_url);
     }
   };
 
@@ -58,14 +77,42 @@ function Notifications() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const priorityDot: Record<string, string> = {
-    high: 'bg-red-500',
-    medium: 'bg-yellow-500',
-    low: 'bg-neutral-400',
+  const getNotificationIcon = (type: string) => {
+    const iconClass = 'w-5 h-5';
+    switch (type.toLowerCase()) {
+      case 'job_application':
+        return (
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        );
+      case 'job':
+        return (
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        );
+      case 'system':
+        return (
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+        );
+    }
   };
 
+  // Get unique notification types
+  const notificationTypes = Array.from(new Set(notifications.map((n) => n.notification_type)));
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="flex items-center justify-between mb-8">
@@ -78,28 +125,68 @@ function Notifications() {
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAllAsRead}
-            className="text-sm font-medium text-neutral-900 hover:underline"
+            className="px-4 py-2 text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
           >
-            Mark all as read
+            Mark All as Read
           </button>
         )}
       </div>
 
       {/* Filter tabs */}
-      <div className="mb-6 flex gap-2 border-b border-neutral-200">
-        {(['all', 'unread', 'read'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
-              filter === tab
-                ? 'border-neutral-900 text-neutral-900'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700'
-            }`}
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-neutral-200">
+        <button
+          onClick={() => {
+            setFilter('all');
+            setTypeFilter('');
+          }}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
+            filter === 'all' && !typeFilter
+              ? 'border-neutral-900 text-neutral-900'
+              : 'border-transparent text-neutral-500 hover:text-neutral-700'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => {
+            setFilter('unread');
+            setTypeFilter('');
+          }}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
+            filter === 'unread'
+              ? 'border-neutral-900 text-neutral-900'
+              : 'border-transparent text-neutral-500 hover:text-neutral-700'
+          }`}
+        >
+          Unread
+        </button>
+        <button
+          onClick={() => {
+            setFilter('type');
+            setTypeFilter('');
+          }}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
+            filter === 'type'
+              ? 'border-neutral-900 text-neutral-900'
+              : 'border-transparent text-neutral-500 hover:text-neutral-700'
+          }`}
+        >
+          By Type
+        </button>
+        {filter === 'type' && notificationTypes.length > 0 && (
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="ml-auto px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900"
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
+            <option value="">All Types</option>
+            {notificationTypes.map((type) => (
+              <option key={type} value={type}>
+                {type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Content */}
@@ -121,22 +208,27 @@ function Notifications() {
           </p>
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`flex items-start gap-4 p-4 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-start gap-4 p-4 rounded-lg border transition-all cursor-pointer ${
                 notification.is_read
-                  ? 'bg-white hover:bg-neutral-50'
-                  : 'bg-neutral-50 hover:bg-neutral-100'
+                  ? 'bg-white border-neutral-200 hover:border-neutral-300'
+                  : 'bg-blue-50 border-blue-200 hover:border-blue-300'
               }`}
-              onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
+              onClick={() => handleNotificationClick(notification)}
             >
-              <div className="mt-1.5 shrink-0">
-                <span className={`block w-2 h-2 rounded-full ${priorityDot[notification.priority] || priorityDot.low}`} />
+              {/* Icon */}
+              <div className={`mt-0.5 shrink-0 ${
+                notification.is_read ? 'text-neutral-400' : 'text-blue-600'
+              }`}>
+                {getNotificationIcon(notification.notification_type)}
               </div>
+
+              {/* Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-2 mb-1">
                   <h3
                     className={`text-sm ${
                       notification.is_read ? 'text-neutral-600' : 'font-medium text-neutral-900'
@@ -148,10 +240,15 @@ function Notifications() {
                     {formatDate(notification.created_at)}
                   </span>
                 </div>
-                <p className="text-sm text-neutral-500 mt-0.5">{notification.message}</p>
-                <span className="inline-block mt-1.5 text-xs text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded">
-                  {notification.notification_type.replace(/_/g, ' ')}
-                </span>
+                <p className="text-sm text-neutral-600 mb-2">{notification.message}</p>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block text-xs text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded">
+                    {notification.notification_type.replace(/_/g, ' ')}
+                  </span>
+                  {!notification.is_read && (
+                    <span className="inline-block w-2 h-2 bg-blue-600 rounded-full"></span>
+                  )}
+                </div>
               </div>
             </div>
           ))}

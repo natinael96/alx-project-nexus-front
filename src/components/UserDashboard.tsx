@@ -26,6 +26,7 @@ function UserDashboard() {
   const { unreadCount, fetchNotifications } = useNotificationsStore();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
+  const [regularJobs, setRegularJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,12 +39,23 @@ function UserDashboard() {
         const dashboardResponse = await profileAPI.getDashboard();
         setDashboardData(dashboardResponse.data);
         
-        // Fetch recommended jobs
+        // Fetch recommended jobs (if available)
         try {
           const recommendationsResponse = await jobsAPI.getRecommendations(4);
-          setRecommendedJobs(recommendationsResponse.data.results);
+          const recommendations = recommendationsResponse.data.results;
+          setRecommendedJobs(recommendations || []);
         } catch (err) {
           console.error('Failed to load recommendations:', err);
+          setRecommendedJobs([]);
+        }
+        
+        // Always fetch regular jobs to show below recommendations
+        try {
+          const jobsResponse = await jobsAPI.getJobs({ status: 'active', ordering: '-created_at', page_size: 8 });
+          setRegularJobs(jobsResponse.data.results || []);
+        } catch (err) {
+          console.error('Failed to load jobs:', err);
+          setRegularJobs([]);
         }
         
         // Fetch notifications count
@@ -238,24 +250,31 @@ function UserDashboard() {
             <p className="text-sm text-neutral-500">No saved jobs yet.</p>
           ) : (
             <div className="space-y-3">
-              {recent_saved_jobs.map((savedJob) => (
-                <div key={savedJob.id} className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <Link to={`/jobs/${savedJob.job.id}`} className="text-sm font-medium text-neutral-900 hover:text-neutral-700 truncate block">
-                      {savedJob.job.title}
+              {recent_saved_jobs
+                .filter((savedJob) => savedJob.job_detail) // Filter out saved jobs without job data
+                .map((savedJob) => (
+                  <div key={savedJob.id} className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <Link to={`/jobs/${savedJob.job_detail.id}`} className="text-sm font-medium text-neutral-900 hover:text-neutral-700 truncate block">
+                        {savedJob.job_detail.title}
+                      </Link>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Saved {new Date(savedJob.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Link
+                      to={`/jobs/${savedJob.job_detail.id}`}
+                      className="text-xs font-medium text-neutral-700 hover:text-neutral-900 transition-colors ml-3 shrink-0"
+                    >
+                      View →
                     </Link>
-                    <p className="text-xs text-neutral-500 mt-1">
-                      Saved {new Date(savedJob.created_at).toLocaleDateString()}
-                    </p>
                   </div>
-                  <Link
-                    to={`/jobs/${savedJob.job.id}`}
-                    className="text-xs font-medium text-neutral-700 hover:text-neutral-900 transition-colors ml-3 shrink-0"
-                  >
-                    View →
-                  </Link>
-                </div>
-              ))}
+                ))}
+              {recent_saved_jobs.filter((savedJob) => !savedJob.job_detail).length > 0 && (
+                <p className="text-xs text-neutral-400 italic">
+                  {recent_saved_jobs.filter((savedJob) => !savedJob.job_detail).length} saved job(s) unavailable
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -263,15 +282,32 @@ function UserDashboard() {
 
       {/* Recommended Jobs */}
       {recommendedJobs.length > 0 && (
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white rounded-xl border border-neutral-200 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-neutral-900">Recommended for You</h2>
-            <Link to="/" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
+            <Link to="/jobs" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
               Browse all →
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {recommendedJobs.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Latest Jobs */}
+      {regularJobs.length > 0 && (
+        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-neutral-900">Latest Jobs</h2>
+            <Link to="/jobs" className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
+              Browse all →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {regularJobs.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}
           </div>

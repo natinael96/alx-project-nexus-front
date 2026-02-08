@@ -12,6 +12,7 @@ import type {
   NotificationFilters,
   UserFilters,
   UserProfile,
+  UserPreferences,
   Skill,
   Education,
   WorkHistory,
@@ -165,7 +166,7 @@ export const authAPI = {
     api.post('/auth/change-password/', {
       old_password: oldPassword,
       new_password: newPassword,
-      confirm_password: confirmPassword,
+      new_password2: confirmPassword,
     }),
   requestPasswordReset: (email: string) =>
     api.post('/auth/password-reset/', { email }),
@@ -191,8 +192,33 @@ export const jobsAPI = {
     api.get<PaginatedResponse<Job>>('/jobs/search/', { params }),
   saveSearch: (data: { query: string; filters: Record<string, string>; name?: string }) =>
     api.post('/jobs/search/save/', data),
-  getRecommendations: (limit: number = 4) =>
-    api.get<PaginatedResponse<Job>>('/jobs/recommendations/', { params: { limit } }),
+  getRecommendations: async (limit: number = 4) => {
+    // Try non-versioned endpoint first: /api/jobs/recommendations/
+    // Fallback to versioned: /api/v1/jobs/recommendations/
+    const headers: any = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Get access token from storage (same as interceptor does)
+    const token = tokenStorage.get('access_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    try {
+      const url = `${API_BASE_URL}/api/jobs/recommendations/`;
+      return await axios.get<PaginatedResponse<Job>>(url, { 
+        params: { limit },
+        headers,
+      });
+    } catch (error: any) {
+      // Fallback to versioned endpoint if non-versioned fails
+      if (error.response?.status === 404) {
+        return api.get<PaginatedResponse<Job>>('/jobs/recommendations/', { params: { limit } });
+      }
+      throw error;
+    }
+  },
   // Admin: Approve/Reject job
   updateJobApproval: (jobId: string, approvalStatus: 'pending' | 'approved' | 'rejected') =>
     api.patch<Job>(`/jobs/${jobId}/`, { approval_status: approvalStatus }),
@@ -218,8 +244,8 @@ export const applicationsAPI = {
 // ---------- Profile API ----------
 
 export const profileAPI = {
-  // Full profile
-  getProfile: () => api.get<UserProfile>('/auth/profile/'),
+  // Full profile - returns user directly with all enhancements nested
+  getProfile: () => api.get<UserProfile>('/auth/profile/profile/'),
   
   // Dashboard data (all stats in one call)
   getDashboard: () => api.get<{
@@ -276,16 +302,136 @@ export const profileAPI = {
   saveJob: (jobId: string, notes?: string) =>
     api.post<SavedJob>('/auth/profile/saved-jobs/', { job: jobId, notes }),
   unsaveJob: (savedJobId: string) => api.delete(`/auth/profile/saved-jobs/${savedJobId}/`),
+
+  // Preferences
+  getPreferences: () => api.get<UserPreferences>('/auth/profile/preferences/'),
+  updatePreferences: (preferencesId: string, data: Partial<UserPreferences>) =>
+    api.put<UserPreferences>(`/auth/profile/preferences/${preferencesId}/`, data),
 };
 
 // ---------- Notifications API ----------
 
 export const notificationsAPI = {
   getNotifications: (params: NotificationFilters = {}) =>
-    api.get<NotificationResponse>('/core/notifications/', { params }),
+    api.get<NotificationResponse>('/notifications/', { params }),
+  getSummary: () => api.get<NotificationResponse>('/notifications/summary/'),
+  getUnreadCount: () => api.get<{ unread_count: number }>('/notifications/unread_count/'),
   markAsRead: (notificationId: string) =>
-    api.post(`/core/notifications/${notificationId}/mark-read/`),
-  markAllAsRead: () => api.post('/core/notifications/mark-all-read/'),
+    api.post(`/notifications/${notificationId}/mark_read/`),
+  markAllAsRead: () => api.post('/notifications/mark_all_read/'),
+};
+
+// ---------- Employer API ----------
+
+export const employerAPI = {
+  // Dashboard
+  getDashboard: () => api.get<{
+    statistics: {
+      jobs: {
+        total: number;
+        active: number;
+        draft: number;
+        closed: number;
+        pending_approval: number;
+      };
+      applications: {
+        total: number;
+        pending: number;
+        accepted: number;
+        rejected: number;
+      };
+      views: {
+        total: number;
+        unique: number;
+      };
+    };
+    recent_jobs: Job[];
+    recent_applications: Application[];
+    top_jobs: Job[];
+  }>('/jobs/employer/dashboard/'),
+
+  // Job Analytics
+  getJobAnalytics: (jobId: string) => api.get<{
+    total_views: number;
+    unique_views: number;
+    applications: number;
+    shares: number;
+    views_over_time: Array<{ date: string; views: number }>;
+    application_sources: Array<{ source: string; count: number }>;
+    conversion_rate: number;
+  }>(`/jobs/${jobId}/analytics/`),
+
+  // Screening Questions
+  getScreeningQuestions: (jobId: string) => api.get<Array<{
+    id: string;
+    job: string;
+    question_text: string;
+    question_type: 'text' | 'multiple_choice' | 'yes_no';
+    is_required: boolean;
+    order: number;
+  }>>('/jobs/applications/screening-questions/', { params: { job_id: jobId } }),
+  createScreeningQuestion: (data: {
+    job: string;
+    question_text: string;
+    question_type: 'text' | 'multiple_choice' | 'yes_no';
+    is_required: boolean;
+    order: number;
+  }) => api.post('/jobs/applications/screening-questions/', data),
+  updateScreeningQuestion: (questionId: string, data: Partial<{
+    question_text: string;
+    question_type: 'text' | 'multiple_choice' | 'yes_no';
+    is_required: boolean;
+    order: number;
+  }>) => api.patch(`/jobs/applications/screening-questions/${questionId}/`, data),
+  deleteScreeningQuestion: (questionId: string) => api.delete(`/jobs/applications/screening-questions/${questionId}/`),
+
+  // Application Notes
+  addApplicationNote: (data: {
+    application: string;
+    content: string;
+    is_private: boolean;
+  }) => api.post('/jobs/applications/notes/', data),
+
+  // Application Scores
+  scoreApplication: (data: {
+    application: string;
+    technical_score: number;
+    communication_score: number;
+    experience_score: number;
+    overall_score: number;
+    comments?: string;
+  }) => api.post('/jobs/applications/scores/', data),
+
+  // Schedule Interview
+  scheduleInterview: (data: {
+    application: string;
+    interview_type: string;
+    scheduled_at: string;
+    duration_minutes: number;
+    location?: string;
+    notes?: string;
+  }) => api.post('/jobs/applications/interviews/', data),
+
+  // Export
+  exportJobs: (format: 'csv' | 'json') => api.get(`/export/jobs/`, { params: { format }, responseType: 'blob' }),
+  exportApplications: (format: 'csv' | 'json', jobId?: string) => {
+    const params: any = { format };
+    if (jobId) params.job = jobId;
+    return api.get(`/export/applications/`, { params, responseType: 'blob' });
+  },
+};
+
+// ---------- Categories API ----------
+
+export const categoriesAPI = {
+  getCategories: () => api.get<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    parent?: string;
+    job_count?: number;
+  }>>('/jobs/categories/'),
 };
 
 // ---------- Files API ----------
@@ -306,12 +452,58 @@ export const filesAPI = {
 // ---------- Admin API ----------
 
 export const adminAPI = {
+  // User Management
   getUsers: (params: UserFilters = {}) =>
-    api.get<PaginatedResponse<User>>('/admin/users/', { params }),
-  getUser: (userId: string) => api.get<User>(`/admin/users/${userId}/`),
+    api.get<PaginatedResponse<User>>('/auth/users/', { params }),
+  getUser: (userId: string) => api.get<User>(`/auth/users/${userId}/`),
   updateUser: (userId: string, data: Partial<User>) =>
-    api.patch<User>(`/admin/users/${userId}/`, data),
-  deleteUser: (userId: string) => api.delete(`/admin/users/${userId}/`),
+    api.put<User>(`/auth/users/${userId}/`, data),
+  deleteUser: (userId: string) => api.delete(`/auth/users/${userId}/`),
+
+  // Statistics
+  getStatistics: () => api.get<any>('/health/statistics/'),
+  getUserStatistics: () => api.get<any>('/health/statistics/users/'),
+  getJobStatistics: () => api.get<any>('/health/statistics/jobs/'),
+  getApplicationStatistics: () => api.get<any>('/health/statistics/applications/'),
+  getUserActivity: (userId: string, days: number = 30) =>
+    api.get<any>(`/health/statistics/user-activity/`, { params: { user_id: userId, days } }),
+
+  // Audit Logs
+  getAuditLogs: (params?: {
+    user?: string;
+    action?: string;
+    content_type?: string;
+    date_from?: string;
+    date_to?: string;
+    page?: number;
+    page_size?: number;
+  }) => api.get<PaginatedResponse<any>>('/audit/logs/', { params }),
+  getAuditHistory: (params?: {
+    content_type?: string;
+    object_id?: string;
+  }) => api.get<any>('/audit/history/', { params }),
+  getObjectHistory: (contentType: string, objectId: string) =>
+    api.get<any>(`/audit/object-history/`, { params: { content_type: contentType, object_id: objectId } }),
+
+  // Search Analytics
+  getSearchStatistics: (days: number = 30) =>
+    api.get<any>('/search/statistics/', { params: { days } }),
+  getPopularSearchTerms: (limit: number = 20, days: number = 30) =>
+    api.get<any>('/search/popular-terms/', { params: { limit, days } }),
+};
+
+// ---------- Search API ----------
+
+export const searchAPI = {
+  autocomplete: (query: string, limit: number = 5) =>
+    api.get<{ query: string; suggestions: string[]; count: number }>('/search/autocomplete/', {
+      params: { q: query, limit },
+    }),
+  getSuggestions: (query: string) =>
+    api.get<any>('/search/suggestions/', { params: { q: query } }),
+  getSearchHistory: () => api.get<any>('/search/history/'),
+  getPopularTerms: (limit: number = 20) =>
+    api.get<any>('/search/popular-terms/', { params: { limit } }),
 };
 
 export default api;

@@ -115,23 +115,34 @@ export interface Portfolio {
 
 export interface UserPreferences {
   id: string;
-  email_notifications: boolean;
-  job_alerts: boolean;
-  newsletter: boolean;
+  email_notifications?: boolean;
+  email_job_alerts?: boolean;
+  email_application_updates?: boolean;
+  email_new_jobs?: boolean;
+  email_newsletter?: boolean;
+  job_alerts?: boolean;
+  newsletter?: boolean;
+  alert_frequency?: 'daily' | 'weekly' | 'monthly';
+  profile_visibility?: 'public' | 'private';
+  show_email?: boolean;
+  show_phone?: boolean;
+  show_location?: boolean;
 }
 
-export interface UserProfile {
-  user: User;
+export interface UserProfile extends User {
+  // All User fields are at top level, plus these enhancements:
   skills: Skill[];
   education: Education[];
   work_history: WorkHistory[];
   social_links: SocialLink[];
+  portfolio: Portfolio[];
   preferences: UserPreferences;
+  profile_completion?: number;
 }
 
 export interface SavedJob {
   id: string;
-  job: Job;
+  job_detail: Job; // API returns 'job_detail' not 'job'
   notes?: string;
   created_at: string;
 }

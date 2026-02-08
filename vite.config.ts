@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     minify: 'esbuild',
     sourcemap: mode !== 'production',
+    chunkSizeWarningLimit: 1000, // Increase chunk size warning limit to 1000KB (1MB)
     esbuild: {
       drop: mode === 'production' ? ['console', 'debugger'] : [],
     },

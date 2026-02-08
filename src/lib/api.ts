@@ -461,12 +461,42 @@ export const adminAPI = {
   deleteUser: (userId: string) => api.delete(`/auth/users/${userId}/`),
 
   // Statistics
-  getStatistics: () => api.get<any>('/health/statistics/'),
-  getUserStatistics: () => api.get<any>('/health/statistics/users/'),
-  getJobStatistics: () => api.get<any>('/health/statistics/jobs/'),
-  getApplicationStatistics: () => api.get<any>('/health/statistics/applications/'),
-  getUserActivity: (userId: string, days: number = 30) =>
-    api.get<any>(`/health/statistics/user-activity/`, { params: { user_id: userId, days } }),
+  // Health endpoints use /health/ directly (not /api/v1/health/)
+  getStatistics: () => {
+    const url = `${API_BASE_URL}/health/statistics/`;
+    const token = tokenStorage.get('access_token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return axios.get<any>(url, { headers });
+  },
+  getUserStatistics: () => {
+    const url = `${API_BASE_URL}/health/statistics/users/`;
+    const token = tokenStorage.get('access_token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return axios.get<any>(url, { headers });
+  },
+  getJobStatistics: () => {
+    const url = `${API_BASE_URL}/health/statistics/jobs/`;
+    const token = tokenStorage.get('access_token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return axios.get<any>(url, { headers });
+  },
+  getApplicationStatistics: () => {
+    const url = `${API_BASE_URL}/health/statistics/applications/`;
+    const token = tokenStorage.get('access_token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return axios.get<any>(url, { headers });
+  },
+  getUserActivity: (userId: string, days: number = 30) => {
+    const url = `${API_BASE_URL}/health/statistics/user-activity/`;
+    const token = tokenStorage.get('access_token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return axios.get<any>(url, { headers, params: { user_id: userId, days } });
+  },
 
   // Audit Logs
   getAuditLogs: (params?: {

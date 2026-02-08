@@ -57,7 +57,19 @@ function Navbar() {
                           Users
                         </Link>
                         <Link
-                          to="/"
+                          to="/admin-panel/audit"
+                          className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+                        >
+                          Audit Logs
+                        </Link>
+                        <Link
+                          to="/admin-panel/search"
+                          className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+                        >
+                          Search Analytics
+                        </Link>
+                        <Link
+                          to="/jobs"
                           className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
                         >
                           Jobs
@@ -83,9 +95,10 @@ function Navbar() {
                           </button>
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                             <div className="py-1">
-                              <Link to="/admin-panel/dashboard" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Statistics</Link>
-                              <Link to="/admin-panel/audit" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Audit Logs</Link>
-                              <Link to="/employer/export" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Export</Link>
+                              <Link to="/profile" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Profile</Link>
+                              <Link to="/admin/jobs" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Manage Jobs</Link>
+                              <Link to="/admin/applications" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Manage Applications</Link>
+                              <Link to="/employer/export" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Export Data</Link>
                               <Link to="/settings" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Settings</Link>
                               <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">Logout</button>
                             </div>

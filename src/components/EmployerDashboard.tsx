@@ -252,8 +252,8 @@ function EmployerDashboard() {
                       }`}>
                         {job.status}
                       </span>
-                      <span className="text-xs text-neutral-500">{(job as any).application_count || 0} applications</span>
-                      <span className="text-xs text-neutral-500">{job.view_count || 0} views</span>
+                      <span className="text-xs text-neutral-500">{job.application_count || 0} applications</span>
+                      <span className="text-xs text-neutral-500">{job.views_count || 0} views</span>
                     </div>
                   </div>
                   <span className="text-xs text-neutral-400 ml-4">
@@ -318,10 +318,10 @@ function EmployerDashboard() {
                   <Link to={`/employer/jobs/${job.id}/applications`} className="text-sm font-medium text-neutral-900 hover:text-neutral-700">
                     {job.title}
                   </Link>
-                  <p className="text-xs text-neutral-500 mt-1">{job.view_count || 0} views</p>
+                  <p className="text-xs text-neutral-500 mt-1">{job.views_count || 0} views</p>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-neutral-500">
-                  <span>{(job as any).application_count || 0} applications</span>
+                  <span>{job.application_count || 0} applications</span>
                 </div>
               </div>
             ))}

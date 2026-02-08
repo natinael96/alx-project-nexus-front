@@ -319,7 +319,7 @@ function UserDashboard() {
         <h2 className="text-lg font-medium text-neutral-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
-            to="/"
+            to="/jobs"
             className="px-4 py-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors text-center"
           >
             <p className="text-sm font-medium text-neutral-900">Browse Jobs</p>

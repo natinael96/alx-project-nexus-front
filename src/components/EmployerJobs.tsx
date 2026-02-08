@@ -172,8 +172,8 @@ function EmployerJobs() {
                           {job.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">{(job as any).application_count || 0}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-600">{job.view_count || 0}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{job.application_count || 0}</td>
+                      <td className="px-6 py-4 text-sm text-neutral-600">{job.views_count || 0}</td>
                       <td className="px-6 py-4 text-sm text-neutral-600">{new Date(job.created_at).toLocaleDateString()}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">

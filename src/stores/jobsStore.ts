@@ -7,16 +7,20 @@ import { sanitizeError } from '../utils/security';
  * Extract unique categories from a list of jobs.
  * Merges with existing categories so the dropdown accumulates as users browse pages.
  */
-const extractCategories = (jobs: Job[], existing: Category[]): Category[] => {
+const extractCategories = (jobs: Job[] | undefined | null, existing: Category[]): Category[] => {
   const map = new Map<string, Category>();
   // Keep existing categories
-  existing.forEach((cat) => map.set(cat.id, cat));
+  if (existing && Array.isArray(existing)) {
+    existing.forEach((cat) => map.set(cat.id, cat));
+  }
   // Add new ones from job results
-  jobs.forEach((job) => {
-    if (job.category && !map.has(job.category.id)) {
-      map.set(job.category.id, job.category);
-    }
-  });
+  if (jobs && Array.isArray(jobs)) {
+    jobs.forEach((job) => {
+      if (job.category && !map.has(job.category.id)) {
+        map.set(job.category.id, job.category);
+      }
+    });
+  }
   // Sort alphabetically by name
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -79,9 +83,9 @@ const useJobsStore = create<JobsState>((set, get) => ({
       ) as JobFilters;
       
       const response = await jobsAPI.getJobs(params);
-      const categories = extractCategories(response.data.results, get().categories);
+      const categories = extractCategories(response.data.results || [], get().categories);
       set({
-        jobs: response.data.results,
+        jobs: response.data.results || [],
         categories,
         pagination: {
           count: response.data.count,
@@ -165,9 +169,9 @@ const useJobsStore = create<JobsState>((set, get) => ({
     try {
       const params = { q: query, ...filters } as JobFilters;
       const response = await jobsAPI.searchJobs(params);
-      const categories = extractCategories(response.data.results, get().categories);
+      const categories = extractCategories(response.data.results || [], get().categories);
       set({
-        jobs: response.data.results,
+        jobs: response.data.results || [],
         categories,
         pagination: {
           count: response.data.count,

@@ -45,7 +45,8 @@ export interface Job {
   status: 'draft' | 'active' | 'closed';
   approval_status: 'pending' | 'approved' | 'rejected';
   is_featured: boolean;
-  view_count: number;
+  views_count: number; // API returns 'views_count' not 'view_count'
+  application_count: number; // API returns 'application_count'
   application_deadline?: string;
   created_at: string;
   updated_at: string;
